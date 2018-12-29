@@ -1,10 +1,23 @@
 package com.stylefeng.guns.rest.modular.film;
 
+import com.alibaba.dubbo.config.annotation.Reference;
+import com.alibaba.dubbo.rpc.RpcContext;
+import com.stylefeng.guns.api.film.FilmAsyncServiceApi;
+import com.stylefeng.guns.api.film.FilmServiceApi;
+import com.stylefeng.guns.api.film.vo.*;
+import com.stylefeng.guns.rest.modular.film.vo.FilmConditionVO;
 import com.stylefeng.guns.rest.modular.film.vo.FilmIndexVO;
+import com.stylefeng.guns.rest.modular.film.vo.FilmRequestVO;
 import com.stylefeng.guns.rest.modular.vo.ResponseVO;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
 /**
  * Created by RookieWangZhiWei on 2018/12/27.
@@ -15,13 +28,239 @@ public class FilmController {
     private static final String img_pre = "http://img.meetingshop.cn/";
 
 
-   @RequestMapping(value = "getIndex",method = RequestMethod.GET)
-    public ResponseVO<FilmIndexVO> getIndex(){
+    @Reference(interfaceClass = FilmServiceApi.class, check = false)
+    private FilmServiceApi filmServiceApi;
 
 
-       FilmIndexVO filmIndexVO = new FilmIndexVO();
+    @Reference(interfaceClass = FilmAsyncServiceApi.class, check = false)
+    private FilmAsyncServiceApi filmAsyncServiceApi;
 
-       filmIndexVO.setBanners();
+    /*
+        获取首页信息接口
 
-   }
+        API网关：
+            1.功能聚合
+            好处：
+                1、六个接口，一次请求，同一时刻节省了五次HTTP请求
+                2、同一个接口对外暴露，降低了前后端分离开发的难度
+            缺点：
+                1数据造成混乱，
+     */
+
+    @RequestMapping(value = "getIndex", method = RequestMethod.GET)
+    public ResponseVO<FilmIndexVO> getIndex() {
+
+
+        FilmIndexVO filmIndexVO = new FilmIndexVO();
+
+        filmIndexVO.setBanners(filmServiceApi.getBanners());
+        // 获取正在热映的电影
+        filmIndexVO.setHotFilms(filmServiceApi.getHotFilms(true, 8, 1, 1, 99, 99, 99));
+        // 即将上映的电影
+        filmIndexVO.setSoonFilms(filmServiceApi.getSoonFilms(true, 8, 1, 1, 99, 99, 99));
+        // 票房排行榜
+        filmIndexVO.setBoxRanking(filmServiceApi.getBoxRanking());
+        // 获取受欢迎的榜单
+        filmIndexVO.setExpectRanking(filmServiceApi.getExpectRanking());
+        // 获取前一百
+        filmIndexVO.setTop100(filmServiceApi.getTop());
+
+        return ResponseVO.success(filmIndexVO);
+
+    }
+
+    @RequestMapping(value = "getConditionList", method = RequestMethod.GET)
+    public ResponseVO getConditionList(@RequestParam(name = "catId", required = false, defaultValue = "99") String catId,
+                                       @RequestParam(name = "sourceId", required = false, defaultValue = "99") String sourceId,
+                                       @RequestParam(name = "yearId", required = false, defaultValue = "99") String yearId) {
+
+        FilmConditionVO filmConditionVO = new FilmConditionVO();
+
+        boolean flag = false;
+
+        List<CatVO> cats = filmServiceApi.getCats();
+
+        List<CatVO> catResult = new ArrayList<>();
+        CatVO cat = null;
+        for (CatVO catVO : cats) {
+            if (catVO.getCatId().equals("99")) {
+                cat = catVO;
+                continue;
+            }
+
+            if (catVO.getCatId().equals(catId)) {
+                flag = true;
+                catVO.setActive(true);
+            } else {
+                catVO.setActive(false);
+            }
+
+            catResult.add(catVO);
+        }
+
+        if (!flag) {
+            cat.setActive(true);
+            catResult.add(cat);
+        } else {
+            cat.setActive(false);
+            catResult.add(cat);
+        }
+
+
+        flag = false;
+
+        List<SourceVO> sources = filmServiceApi.getSources();
+        List<SourceVO> sourceResult = new ArrayList<>();
+        SourceVO sourceVO = null;
+
+        for (SourceVO source : sources) {
+            if (source.getSourceId().equals("99")) {
+                sourceVO = source;
+                continue;
+
+            }
+            if (source.getSourceId().equals(catId)) {
+                flag = true;
+                source.setActive(true);
+            } else {
+                source.setActive(false);
+            }
+
+            sourceResult.add(source);
+        }
+
+        if (!flag) {
+            sourceVO.setActive(true);
+            sourceResult.add(sourceVO);
+
+        } else {
+            sourceVO.setActive(false);
+            sourceResult.add(sourceVO);
+        }
+
+        flag = false;
+
+        List<YearVO> years = filmServiceApi.getYears();
+
+        List<YearVO> yearResult = new ArrayList<>();
+
+        YearVO yearVO = null;
+
+        for (YearVO year : years) {
+            if (year.getYearId().equals("99")) {
+                yearVO = year;
+                continue;
+            }
+            if (year.getYearId().equals(catId)) {
+                flag = true;
+                year.setActive(true);
+            } else {
+                year.setActive(false);
+            }
+            yearResult.add(year);
+        }
+        if (!flag) {
+            yearVO.setActive(true);
+            yearResult.add(yearVO);
+        } else {
+            yearVO.setActive(false);
+            yearResult.add(yearVO);
+        }
+
+        filmConditionVO.setCatInfo(catResult);
+        filmConditionVO.setSourceInfo(sourceResult);
+        filmConditionVO.setYearInfo(yearResult);
+
+        return ResponseVO.success(filmConditionVO);
+
+    }
+
+    @RequestMapping(value = "getFilms", method = RequestMethod.GET)
+    public ResponseVO getFilms(FilmRequestVO filmRequestVO) {
+        String img_pre = "http://img.meetingshop.cn/";
+
+        FilmVO filmVO = null;
+
+        switch (filmRequestVO.getShowType()) {
+            case 1:
+                filmVO = filmServiceApi.getHotFilms(
+                        false, filmRequestVO.getPageSize(), filmRequestVO.getNowPage(),
+                        filmRequestVO.getSortId(), filmRequestVO.getSourceId(), filmRequestVO.getYearId(),
+                        filmRequestVO.getCatId());
+                break;
+            case 2:
+                filmVO = filmServiceApi.getSoonFilms(
+                        false, filmRequestVO.getPageSize(), filmRequestVO.getNowPage(),
+                        filmRequestVO.getSortId(), filmRequestVO.getSourceId(), filmRequestVO.getYearId(),
+                        filmRequestVO.getCatId());
+                break;
+            case 3:
+                filmVO = filmServiceApi.getClassicFilms(
+                        filmRequestVO.getPageSize(), filmRequestVO.getNowPage(),
+                        filmRequestVO.getSortId(), filmRequestVO.getSourceId(),
+                        filmRequestVO.getYearId(), filmRequestVO.getCatId());
+                break;
+            default:
+                filmVO = filmServiceApi.getHotFilms(
+                        false, filmRequestVO.getPageSize(), filmRequestVO.getNowPage(),
+                        filmRequestVO.getSortId(), filmRequestVO.getSourceId(), filmRequestVO.getYearId(),
+                        filmRequestVO.getCatId());
+                break;
+        }
+
+        return ResponseVO.success(
+                filmVO.getNowPage(), filmVO.getTotalPage(),
+                img_pre, filmVO.getFilmInfo());
+    }
+
+
+    @RequestMapping(value = "films/{searchParam}", method = RequestMethod.GET)
+    public ResponseVO films(@PathVariable("searchParam") String searchParam, int searchType) throws ExecutionException, InterruptedException {
+
+        FilmDetailVO filmDetail = filmServiceApi.getFilmDetail(searchType, searchParam);
+
+        if (filmDetail == null) {
+            return ResponseVO.serviceFail("没有可查询的影片");
+        } else if (filmDetail.getFilmId() == null || filmDetail.getFilmId().trim().length() == 0) {
+            return ResponseVO.serviceFail("没有可查询的影片");
+        }
+
+        String filmId = filmDetail.getFilmId();
+
+        // 获取影片描述信息
+        filmAsyncServiceApi.getFilmDesc(filmId);
+        Future<FilmDescVO> filmDescVOFuture = RpcContext.getContext().getFuture();
+
+
+        // 获取图片信息
+        filmAsyncServiceApi.getImgs(filmId);
+        Future<ImgVO> imgVOFuture = RpcContext.getContext().getFuture();
+
+        // 获取导演信息
+        filmAsyncServiceApi.getDectInfo(filmId);
+        Future<ActorVO> actorVOFuture = RpcContext.getContext().getFuture();
+        // 获取演员信息
+        filmAsyncServiceApi.getActors(filmId);
+        Future<List<ActorVO>> actorsVOFutrue = RpcContext.getContext().getFuture();
+
+        InfoRequstVO infoRequstVO = new InfoRequstVO();
+
+        // 组织Actor属性
+        ActorRequestVO actorRequestVO = new ActorRequestVO();
+        actorRequestVO.setActors(actorsVOFutrue.get());
+        actorRequestVO.setDirector(actorVOFuture.get());
+
+        // 组织info对象
+        infoRequstVO.setActors(actorRequestVO);
+        infoRequstVO.setBiography(filmDescVOFuture.get().getBiography());
+        infoRequstVO.setFilmId(filmId);
+        infoRequstVO.setImgVO(imgVOFuture.get());
+
+        filmDetail.setInfo04(infoRequstVO);
+
+        return ResponseVO.success("http://img.meetingshop.cn/", filmDetail);
+
+    }
+
+
 }

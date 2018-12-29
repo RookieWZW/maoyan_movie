@@ -15,6 +15,10 @@ import org.springframework.stereotype.Component;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Created by RookieWangZhiWei on 2018/12/29.
+ */
+
 @Component
 @Service(interfaceClass = FilmAsyncServiceApi.class)
 public class DefaultFilmAsyncServiceImpl implements FilmAsyncServiceApi {
@@ -25,13 +29,11 @@ public class DefaultFilmAsyncServiceImpl implements FilmAsyncServiceApi {
     @Autowired
     private MoocActorTMapper moocActorTMapper;
 
-    private MoocFilmInfoT getFilmInfo(String filmId){
-
+    private MoocFilmInfoT getFilmInfo(String fimId) {
         MoocFilmInfoT moocFilmInfoT = new MoocFilmInfoT();
-        moocFilmInfoT.setFilmId(filmId);
 
+        moocFilmInfoT.setFilmId(fimId);
         moocFilmInfoT = moocFilmInfoTMapper.selectOne(moocFilmInfoT);
-
         return moocFilmInfoT;
     }
 
@@ -41,9 +43,9 @@ public class DefaultFilmAsyncServiceImpl implements FilmAsyncServiceApi {
         MoocFilmInfoT moocFilmInfoT = getFilmInfo(filmId);
 
         FilmDescVO filmDescVO = new FilmDescVO();
+
         filmDescVO.setBiography(moocFilmInfoT.getBiography());
         filmDescVO.setFilmId(filmId);
-
         return filmDescVO;
     }
 
@@ -51,8 +53,10 @@ public class DefaultFilmAsyncServiceImpl implements FilmAsyncServiceApi {
     public ImgVO getImgs(String filmId) {
 
         MoocFilmInfoT moocFilmInfoT = getFilmInfo(filmId);
-        // 图片地址是五个以逗号为分隔的链接URL
+
+
         String filmImgStr = moocFilmInfoT.getFilmImgs();
+
         String[] filmImgs = filmImgStr.split(",");
 
         ImgVO imgVO = new ImgVO();
@@ -67,10 +71,8 @@ public class DefaultFilmAsyncServiceImpl implements FilmAsyncServiceApi {
 
     @Override
     public ActorVO getDectInfo(String filmId) {
-
         MoocFilmInfoT moocFilmInfoT = getFilmInfo(filmId);
 
-        // 获取导演编号
         Integer directId = moocFilmInfoT.getDirectorId();
 
         MoocActorT moocActorT = moocActorTMapper.selectById(directId);
@@ -86,9 +88,6 @@ public class DefaultFilmAsyncServiceImpl implements FilmAsyncServiceApi {
     public List<ActorVO> getActors(String filmId) {
 
         List<ActorVO> actors = moocActorTMapper.getActors(filmId);
-
         return actors;
     }
-
-
 }

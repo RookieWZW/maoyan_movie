@@ -4,6 +4,7 @@ import com.alibaba.dubbo.config.annotation.Service;
 import com.baomidou.mybatisplus.mapper.EntityWrapper;
 import com.baomidou.mybatisplus.plugins.Page;
 import com.stylefeng.guns.api.film.FilmServiceApi;
+import com.stylefeng.guns.api.film.vo.FilmDetailVO;
 import com.stylefeng.guns.api.film.vo.*;
 import com.stylefeng.guns.core.util.DateUtil;
 import com.stylefeng.guns.rest.common.persistence.dao.*;
@@ -335,10 +336,10 @@ public class DefaultFilmServiceImpl implements FilmServiceApi {
     public List<SourceVO> getSources() {
         List<SourceVO> sources = new ArrayList<>();
         List<MoocSourceDictT> moocSourceDicts = moocSourceDictTMapper.selectList(null);
-        for(MoocSourceDictT moocSourceDictT : moocSourceDicts){
+        for (MoocSourceDictT moocSourceDictT : moocSourceDicts) {
             SourceVO sourceVO = new SourceVO();
 
-            sourceVO.setSourceId(moocSourceDictT.getUuid()+"");
+            sourceVO.setSourceId(moocSourceDictT.getUuid() + "");
             sourceVO.setSourceName(moocSourceDictT.getShowName());
 
             sources.add(sourceVO);
@@ -349,12 +350,12 @@ public class DefaultFilmServiceImpl implements FilmServiceApi {
     @Override
     public List<YearVO> getYears() {
         List<YearVO> years = new ArrayList<>();
-        /
+
         List<MoocYearDictT> moocYears = moocYearDictTMapper.selectList(null);
 
-        for(MoocYearDictT moocYearDictT : moocYears){
+        for (MoocYearDictT moocYearDictT : moocYears) {
             YearVO yearVO = new YearVO();
-            yearVO.setYearId(moocYearDictT.getUuid()+"");
+            yearVO.setYearId(moocYearDictT.getUuid() + "");
             yearVO.setYearName(moocYearDictT.getShowName());
 
             years.add(yearVO);
@@ -364,26 +365,74 @@ public class DefaultFilmServiceImpl implements FilmServiceApi {
 
     @Override
     public FilmDetailVO getFilmDetail(int searchType, String searchParam) {
-        return null;
+
+        FilmDetailVO filmDetailVO = null;
+
+        if (searchType == 1) {
+            filmDetailVO = moocFilmTMapper.getFilmDetailByName("%" + searchParam + "%");
+        } else {
+            filmDetailVO = moocFilmTMapper.getFilmDetailById(searchParam);
+        }
+        return filmDetailVO;
+    }
+
+    private MoocFilmInfoT getFilmInfo(String filmId) {
+        MoocFilmInfoT moocFilmInfoT = new MoocFilmInfoT();
+
+        moocFilmInfoT.setFilmId(filmId);
+        moocFilmInfoT = moocFilmInfoTMapper.selectOne(moocFilmInfoT);
+
+        return moocFilmInfoT;
     }
 
     @Override
     public FilmDescVO getFilmDesc(String filmId) {
-        return null;
+
+        MoocFilmInfoT moocFilmInfoT = getFilmInfo(filmId);
+        FilmDescVO filmDescVO = new FilmDescVO();
+
+        filmDescVO.setBiography(moocFilmInfoT.getBiography());
+        filmDescVO.setFilmId(filmId);
+
+        return filmDescVO;
     }
 
     @Override
     public ImgVO getImgs(String filmId) {
-        return null;
+        MoocFilmInfoT moocFilmInfoT = getFilmInfo(filmId);
+
+        String filmImgStr = moocFilmInfoT.getFilmImgs();
+        String[] filmImgs = filmImgStr.split(",");
+
+        ImgVO imgVO = new ImgVO();
+        imgVO.setMainImg(filmImgs[0]);
+        imgVO.setImg01(filmImgs[1]);
+        imgVO.setImg02(filmImgs[2]);
+        imgVO.setImg03(filmImgs[3]);
+        imgVO.setImg04(filmImgs[4]);
+        return imgVO;
     }
 
     @Override
     public ActorVO getDectInfo(String filmId) {
-        return null;
+
+        MoocFilmInfoT moocFilmInfoT = getFilmInfo(filmId);
+
+        Integer directId = moocFilmInfoT.getDirectorId();
+
+        MoocActorT moocActorT = moocActorTMapper.selectById(directId);
+
+        ActorVO actorVO = new ActorVO();
+
+        actorVO.setImgAddress(moocActorT.getActorImg());
+        actorVO.setDirectorName(moocActorT.getActorName());
+        return actorVO;
     }
 
     @Override
     public List<ActorVO> getActors(String filmId) {
-        return null;
+
+        List<ActorVO> actors = moocActorTMapper.getActors(filmId);
+        return actors;
     }
 }
