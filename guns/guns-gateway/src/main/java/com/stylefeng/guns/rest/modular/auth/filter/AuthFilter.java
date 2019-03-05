@@ -8,8 +8,9 @@ import com.stylefeng.guns.rest.config.properties.JwtProperties;
 import com.stylefeng.guns.rest.modular.auth.util.JwtTokenUtil;
 import com.stylefeng.guns.rest.modular.vo.ResponseVO;
 import io.jsonwebtoken.JwtException;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+
+import org.apache.log4j.Logger;
+import org.apache.log4j.spi.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -27,7 +28,7 @@ import java.io.IOException;
  */
 public class AuthFilter extends OncePerRequestFilter {
 
-    private final Log logger = LogFactory.getLog(this.getClass());
+    private final Logger logger = Logger.getLogger(this.getClass());
 
     @Autowired
     private JwtTokenUtil jwtTokenUtil;
@@ -46,7 +47,7 @@ public class AuthFilter extends OncePerRequestFilter {
         String ignoreUrl = jwtProperties.getIgnoreUrl();
         String[] ignoreUrls = ignoreUrl.split(",");
         for(int i=0;i<ignoreUrls.length;i++){
-            if(request.getServletPath().equals(ignoreUrls[i])){
+            if(request.getServletPath().startsWith(ignoreUrls[i])){
                 chain.doFilter(request, response);
                 return;
             }

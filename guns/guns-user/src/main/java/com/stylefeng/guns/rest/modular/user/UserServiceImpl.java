@@ -13,6 +13,8 @@ import com.stylefeng.guns.rest.common.persistence.model.MoocUserT;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.util.Date;
+
 /**
  * Created by RookieWangZhiWei on 2018/12/27.
  */
@@ -120,7 +122,7 @@ public class UserServiceImpl implements UserAPI {
         moocUserT.setUserPhone(userInfoModel.getPhone());
         moocUserT.setUserSex(userInfoModel.getSex());
 
-        moocUserT.setUpdateTime(null);
+        moocUserT.setUpdateTime(new Date());
 
         Integer integer = moocUserTMapper.updateById(moocUserT);
 

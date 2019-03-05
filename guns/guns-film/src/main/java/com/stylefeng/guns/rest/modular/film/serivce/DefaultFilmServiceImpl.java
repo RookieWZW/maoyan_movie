@@ -273,6 +273,7 @@ public class DefaultFilmServiceImpl implements FilmServiceApi {
 
     }
 
+    //票房前十名
     @Override
     public List<FilmInfo> getBoxRanking() {
         EntityWrapper<MoocFilmT> entityWrapper = new EntityWrapper<>();
@@ -286,7 +287,7 @@ public class DefaultFilmServiceImpl implements FilmServiceApi {
         List<FilmInfo> filmInfos = getFilmInfos(moocFilms);
         return filmInfos;
     }
-
+        //期待前十名
     @Override
     public List<FilmInfo> getExpectRanking() {
         EntityWrapper<MoocFilmT> entityWrapper = new EntityWrapper<>();
@@ -301,6 +302,7 @@ public class DefaultFilmServiceImpl implements FilmServiceApi {
         return filmInfos;
     }
 
+    //评论前十名
     @Override
     public List<FilmInfo> getTop() {
         EntityWrapper<MoocFilmT> entityWrapper = new EntityWrapper<>();

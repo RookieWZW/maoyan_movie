@@ -9,7 +9,6 @@ import com.stylefeng.guns.rest.modular.film.vo.FilmConditionVO;
 import com.stylefeng.guns.rest.modular.film.vo.FilmIndexVO;
 import com.stylefeng.guns.rest.modular.film.vo.FilmRequestVO;
 import com.stylefeng.guns.rest.modular.vo.ResponseVO;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
@@ -22,7 +21,7 @@ import java.util.concurrent.Future;
 /**
  * Created by RookieWangZhiWei on 2018/12/27.
  */
-@Controller
+@RestController
 @RequestMapping("/film/")
 public class FilmController {
     private static final String img_pre = "http://img.meetingshop.cn/";
@@ -32,7 +31,7 @@ public class FilmController {
     private FilmServiceApi filmServiceApi;
 
 
-    @Reference(interfaceClass = FilmAsyncServiceApi.class, check = false)
+    @Reference(interfaceClass = FilmAsyncServiceApi.class, check = false,async = true)
     private FilmAsyncServiceApi filmAsyncServiceApi;
 
     /*
@@ -50,7 +49,7 @@ public class FilmController {
     @RequestMapping(value = "getIndex", method = RequestMethod.GET)
     public ResponseVO<FilmIndexVO> getIndex() {
 
-
+        System.out.println("111111111111111111111111111111111111111");
         FilmIndexVO filmIndexVO = new FilmIndexVO();
 
         filmIndexVO.setBanners(filmServiceApi.getBanners());
@@ -214,35 +213,37 @@ public class FilmController {
     }
 
 
-    @RequestMapping(value = "films/{searchParam}", method = RequestMethod.GET)
-    public ResponseVO films(@PathVariable("searchParam") String searchParam, int searchType) throws ExecutionException, InterruptedException {
+    @RequestMapping(value = "films/{searchParam}",method = RequestMethod.GET)
+    public ResponseVO films(@PathVariable("searchParam")String searchParam,
+                            int searchType) throws ExecutionException, InterruptedException {
 
+        // 根据searchType，判断查询类型
         FilmDetailVO filmDetail = filmServiceApi.getFilmDetail(searchType, searchParam);
 
-        if (filmDetail == null) {
+        if(filmDetail==null){
             return ResponseVO.serviceFail("没有可查询的影片");
-        } else if (filmDetail.getFilmId() == null || filmDetail.getFilmId().trim().length() == 0) {
+        }else if(filmDetail.getFilmId()==null || filmDetail.getFilmId().trim().length()==0){
             return ResponseVO.serviceFail("没有可查询的影片");
         }
 
         String filmId = filmDetail.getFilmId();
-
+        // 查询影片的详细信息 -> Dubbo的异步调用
         // 获取影片描述信息
+//        FilmDescVO filmDescVO = filmAsyncServiceApi.getFilmDesc(filmId);
         filmAsyncServiceApi.getFilmDesc(filmId);
         Future<FilmDescVO> filmDescVOFuture = RpcContext.getContext().getFuture();
-
-
         // 获取图片信息
         filmAsyncServiceApi.getImgs(filmId);
         Future<ImgVO> imgVOFuture = RpcContext.getContext().getFuture();
-
         // 获取导演信息
         filmAsyncServiceApi.getDectInfo(filmId);
         Future<ActorVO> actorVOFuture = RpcContext.getContext().getFuture();
         // 获取演员信息
         filmAsyncServiceApi.getActors(filmId);
+        System.out.println( RpcContext.getContext().getFuture());
         Future<List<ActorVO>> actorsVOFutrue = RpcContext.getContext().getFuture();
 
+        // 组织info对象
         InfoRequstVO infoRequstVO = new InfoRequstVO();
 
         // 组织Actor属性
@@ -256,10 +257,10 @@ public class FilmController {
         infoRequstVO.setFilmId(filmId);
         infoRequstVO.setImgVO(imgVOFuture.get());
 
+        // 组织成返回值
         filmDetail.setInfo04(infoRequstVO);
 
-        return ResponseVO.success("http://img.meetingshop.cn/", filmDetail);
-
+        return ResponseVO.success("http://img.meetingshop.cn/",filmDetail);
     }
 
 
